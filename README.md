@@ -25,13 +25,18 @@ pip install -e ".[dev]"
 pytest
 ```
 
-Pull a month of Lichess data:
+Pull a month of Lichess data and convert it to parquet shards:
 
 ```bash
 ./scripts/download_lichess.sh 2024-01 data/raw
+python scripts/build_parquet_shards.py \
+    --src data/raw/lichess_db_standard_rated_2024-01.pgn.zst \
+    --dst data/processed
 ```
 
 Open `notebooks/01_data_smoke.ipynb` to verify the encoder + PGN parsing pipeline (runs in seconds on CPU, no real data needed).
+
+To run on Kaggle (recommended for the free GPU quota), see [`KAGGLE.md`](KAGGLE.md).
 
 ## Repo layout
 
@@ -41,12 +46,14 @@ src/chess_rl/
   data.py            streaming PGN reader, filter, eval/NAG extraction
   utils/stockfish.py FEN-keyed Stockfish eval cache
 scripts/
-  download_lichess.sh
+  download_lichess.sh         pull one month from database.lichess.org
+  build_parquet_shards.py     PGN .zst -> parquet shards (Week 2 input)
   push_dataset_to_kaggle.py   CLI backend; MCP backend slot reserved
 notebooks/
   01_data_smoke.ipynb
 tests/
-  test_encoding.py   round-trip + plane layout, 120+ positions
+  test_encoding.py            round-trip + plane layout, 120+ positions
+  test_build_shards.py        shard builder end-to-end on synthetic PGN
 ```
 
 ## Compute
