@@ -17,6 +17,23 @@ Modern chess engines (Stockfish, Leela) optimize for *strength*, while Maia (McI
 - State: 8×8×12 piece-plane tensor + side-to-move + castling/en-passant flags.
 - Reward shaping: `r = -Δeval(move)` clipped to [−3, +1] pawns, with extra −1 penalty on tagged `??` moves.
 
+## 3a. Relation to Maia
+
+Maia (McIlroy-Young et al., KDD 2020) is the closest prior work and the main baseline. Maia is a *supervised behavioral-cloning* model trained on Lichess games filtered by Elo bucket; it predicts the move a typical human at that Elo would play — including the blunders. Its goal is *descriptive*: maximize move-agreement with humans at the target rating.
+
+Our work differs along four axes:
+
+| Axis | Maia | This proposal |
+|---|---|---|
+| Learning paradigm | Supervised BC | Offline RL (CQL / IQL) |
+| Engine signal at training | Ignored | Δeval used as reward; tagged `??` moves get explicit penalty |
+| Treatment of blunders | Faithfully reproduced | Actively suppressed |
+| Goal | Model the *typical* human at Elo E | Model the *improved* human at Elo E — same style, fewer tactical mistakes |
+| Per-Elo strategy | One model per bucket | One model + reward shaping can sweep the human-likeness/blunder trade-off |
+| Evaluation metric | Move-agreement | Pareto curve of move-agreement × blunder rate |
+
+In short: Maia answers "what move would a 1500 player make here?"; we answer "what move would a 1500 player make here if they had studied their last loss?" The two are not in competition on Maia's metric — they are evaluated on a strictly broader frontier that Maia's training objective cannot directly target.
+
 ## 4. Method
 
 1. **Baselines.** (B1) Behavioral cloning on all moves. (B2) BC filtered to non-blunder moves only. (B3) Maia-1500 / Maia-1700 public checkpoints.
