@@ -26,18 +26,24 @@ The first cell auto-detects the Kaggle environment, clones the repo into `/kaggl
 
 The full month is ~30 GB compressed, which exceeds a Kaggle notebook's `/kaggle/working` budget. Two ways to make it fit:
 
-### Option A — Attach an existing Kaggle Lichess Dataset
+### Option A — Stream directly into parquet shards (recommended)
 
-Several users mirror the Lichess monthly dumps as Kaggle Datasets. Search "lichess pgn 2024" under Datasets. Add the dataset to your notebook via **Add Input → Datasets**, then point `iter_games_from_zst` at the path under `/kaggle/input/<dataset-slug>/`.
+This avoids ever holding the 30 GB compressed file on disk. From a Kaggle notebook with Internet enabled:
 
-### Option B — Stream-process and shard locally, then upload as a Dataset
+```python
+!python /kaggle/working/stunning-fiesta/scripts/stream_lichess_to_shards.py \
+    --month 2024-01 \
+    --dst /kaggle/working/shards \
+    --max-kept-games 50000
+```
 
-1. Run `scripts/download_lichess.sh 2024-01 data/raw` on a machine with disk space.
-2. Run `scripts/build_parquet_shards.py` (see Week 2) to produce ~200 MB shards.
-3. Publish the shards as a Kaggle Dataset with `scripts/push_dataset_to_kaggle.py --backend cli`.
-4. Attach that dataset to subsequent training notebooks.
+The script decompresses on the fly and writes parquet shards incrementally. `--max-kept-games 50000` produces about 2M training plies (~1.5 GB of parquet) and stops the download once enough filtered games have been collected — so only a fraction of the 30 GB is actually transferred. For a first-try smoke check, use `--max-kept-games 50 --cap-mb 50`.
 
-The processed shards are ~1 GB total — well within Kaggle's per-dataset and per-notebook size limits.
+After it finishes, publish the shards as a Kaggle Dataset (`scripts/push_dataset_to_kaggle.py`) so subsequent training notebooks can attach them via **Add Input → Datasets** without re-running the extract.
+
+### Option B — Attach an existing Kaggle Lichess Dataset
+
+Several users mirror the Lichess monthly dumps as Kaggle Datasets. Search "lichess pgn 2024" under Datasets, then run `scripts/build_parquet_shards.py --src /kaggle/input/<slug>/<file>.pgn.zst --dst /kaggle/working/shards` to get the same parquet output.
 
 ## Troubleshooting
 

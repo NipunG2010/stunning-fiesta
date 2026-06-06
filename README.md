@@ -25,7 +25,17 @@ pip install -e ".[dev]"
 pytest
 ```
 
-Pull a month of Lichess data and convert it to parquet shards:
+Build parquet training shards from Lichess. **Recommended: stream straight into shards** so the 30 GB compressed dump never lands on disk:
+
+```bash
+python scripts/stream_lichess_to_shards.py \
+    --month 2024-01 --dst data/processed \
+    --max-kept-games 50000
+```
+
+Disk usage stays at the active shard buffer (~50–200 MB) plus the final parquet output. `--max-kept-games` caps how many filtered games to keep — and the script stops downloading after that, so a small extract only pulls a fraction of the file.
+
+If you'd rather download the .zst once and process locally (e.g. you'll re-extract with different filters later):
 
 ```bash
 ./scripts/download_lichess.sh 2024-01 data/raw
@@ -46,14 +56,16 @@ src/chess_rl/
   data.py            streaming PGN reader, filter, eval/NAG extraction
   utils/stockfish.py FEN-keyed Stockfish eval cache
 scripts/
-  download_lichess.sh         pull one month from database.lichess.org
-  build_parquet_shards.py     PGN .zst -> parquet shards (Week 2 input)
-  push_dataset_to_kaggle.py   CLI backend; MCP backend slot reserved
+  download_lichess.sh             pull one month from database.lichess.org
+  build_parquet_shards.py         local .pgn.zst -> parquet shards
+  stream_lichess_to_shards.py     stream from URL -> shards (no 30 GB on disk)
+  push_dataset_to_kaggle.py       CLI backend; MCP backend slot reserved
 notebooks/
   01_data_smoke.ipynb
 tests/
   test_encoding.py            round-trip + plane layout, 120+ positions
-  test_build_shards.py        shard builder end-to-end on synthetic PGN
+  test_build_shards.py        local shard builder, synthetic PGN
+  test_stream_shards.py       streaming shard builder, local HTTP + zstd
 ```
 
 ## Compute
